@@ -3,16 +3,16 @@ from socket import *
 serverSocket = socket(AF_INET, SOCK_STREAM)
 
 #Prepare a sever socket
-serverSocket.bind(("127.0.0.1", 6789))
+serverSocket.bind(("0.0.0.0", 6789))
 serverSocket.listen(5)
 
-header_200_ok = '''
+header_200_ok = b'''
 HTTP/1.1 200 ok
 Content-Type: text/html
 
 '''
 
-header_404_notfound = '''
+header_404_notfound = b'''
 HTTP/1.1 404 Not Found
 Content-Type: text/html
 
@@ -20,13 +20,13 @@ Content-Type: text/html
 
 while True:
     #Establish the connection
-    print 'Ready to serve...'
+    print('Ready to serve...')
     connectionSocket, addr = serverSocket.accept()
 
     try:
         message = connectionSocket.recv(1024)
         filename = message.split()[1]
-        f = open(filename[1:])
+        f = open(filename[1:], 'rb')
         outputdata = f.read()
 
         #Send one HTTP header line into socket
@@ -38,8 +38,10 @@ while True:
     except IOError:
         #Send response message for file not found
         connectionSocket.sendall(header_404_notfound)
-        connectionSocket.sendall("404 not found")
-
+        connectionSocket.sendall(b'404 not found')
         connectionSocket.close()
         
-serverSocket.close()                                     
+    except:        
+        connectionSocket.close()
+        
+serverSocket.close()
