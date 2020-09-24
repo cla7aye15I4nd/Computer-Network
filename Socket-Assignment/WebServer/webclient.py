@@ -1,18 +1,38 @@
 import sys
 from socket import *
 
-if len(sys.argv) < 4:
-    print('Wrong argument')
-    exit(0)
-
 host = sys.argv[1]
-port = int(sys.argv[2])
-filename = sys.argv[3]
+port = 80 if len(sys.argv) < 3 else int(sys.argv[2])
+filename = '/' if len(sys.argv) < 4 else sys.argv[3]
 
-client = socket(AF_INET, SOCK_STREAM)
-client.connect((host, port))
-client.send(b'GET /' + filename.encode())
+def httpie(host, port, filename):
+    client = socket(AF_INET, SOCK_STREAM)
+    client.connect((host, port))
+    
+    header = f'''GET {filename} HTTP/1.1
+Host: {host}
+User-Agent: HTTPie/0.9.8
+Accept-Encoding: deflate
+Accept: */*
+Connection: keep-alive
 
-print(client.recv(1024).decode())
-print(client.recv(1024).decode())
-client.close()
+
+'''
+
+    client.settimeout(2.0)
+    client.send(header.encode())
+    
+    data = b''
+
+    try:
+        while True:
+            buf = client.recv(1024)        
+            data += buf
+    except Exception:
+        pass
+        
+    client.close()
+
+    return data.decode()
+
+print(httpie(host, port, filename))
