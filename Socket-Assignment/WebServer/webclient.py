@@ -18,16 +18,17 @@ Connection: keep-alive
 
 
 '''
-
     client.settimeout(2.0)
     client.send(header.encode())
     
     data = b''
 
     try:
-        while True:
+        while True:            
             buf = client.recv(1024)        
             data += buf
+            if len(buf) == 0:
+                break
     except Exception:
         pass
         
