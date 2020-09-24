@@ -1,5 +1,6 @@
 # UDPPingerServer.py
 # We will need the following module to generate randomized lost packets
+import time
 import random
 from socket import *
 
@@ -16,13 +17,18 @@ while True:
 
     # Receive the client packet along with the address it is coming from
     message, address = serverSocket.recvfrom(1024)
-
+    
     # Capitalize the message from the client
     message = message.upper()
-
+    time_stamp = float(message[23:])
+    time_diff = time.time() - time_stamp
+  
     # If rand is less is than 4, we consider the packet lost and do not respond
     if rand < 4:
+        print('packet loss')
         continue
+    else:
+        print(f'time difference: {time_diff}')
 
     # Otherwise, the server responds
     serverSocket.sendto(message, address)
