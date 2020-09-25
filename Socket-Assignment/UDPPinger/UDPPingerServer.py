@@ -16,19 +16,21 @@ while True:
     rand = random.randint(0, 10)
 
     # Receive the client packet along with the address it is coming from
-    message, address = serverSocket.recvfrom(1024)
+    message, addr = serverSocket.recvfrom(1024)
     
-    # Capitalize the message from the client
-    message = message.upper()
-    time_stamp = float(message[23:])
+    # Capitalize the message from the clint
+
+    time_stamp = float(message.split(b'time:')[1])
+    num = int(message.split()[0][1:])
     time_diff = time.time() - time_stamp
-  
+    message = message.upper()
+
+    print(f'#{num} time difference: {time_diff} from {addr}')
+
     # If rand is less is than 4, we consider the packet lost and do not respond
     if rand < 4:
-        print('packet loss')
-        continue
-    else:
-        print(f'time difference: {time_diff}')
+        print('server packet loss')
+        
 
     # Otherwise, the server responds
-    serverSocket.sendto(message, address)
+    serverSocket.sendto(message, addr)
