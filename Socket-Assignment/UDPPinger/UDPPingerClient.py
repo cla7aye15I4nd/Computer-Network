@@ -13,9 +13,8 @@ ticks = time.time()
 
 try:
     while True:
-        while time.time() - ticks < 1:
-            pass
-    
+        time.sleep(0.9)
+        
         ticks = time.time()
         data = f'#{ping_num} time:{ticks}'.encode()
         clientSocket.sendto(data, ('', 12000))
