@@ -32,7 +32,7 @@ Connection: keep-alive
 
     try:
         while True:
-            buf = client.recv(1024)        
+            buf = client.recv(1024)
             data += buf
             if len(buf) == 0:
                 break
@@ -52,7 +52,7 @@ class ConnectionThread(threading.Thread):
         tcpCliSock = self.con
         message = tcpCliSock.recv(1024).decode()
         # print(message)
-    
+        
         url = message.split()[1][1:]
         url_base64 = base64.b64encode(url.encode())
         fileExist = False
