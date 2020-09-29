@@ -29,8 +29,7 @@ class ConnectionThread(threading.Thread):
     def run(self):
         try:
             message = self.con.recv(1024)
-            fi
-            lename = message.split()[1]
+            filename = message.split()[1]
 
             if filename[1:] == b'sleep':
                 time.sleep(5)
