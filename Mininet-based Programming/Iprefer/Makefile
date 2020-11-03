@@ -2,7 +2,7 @@ JFLAGS = -g
 JC = javac
 .SUFFIXES: .java .class
 .java.class:
-	$(JC) $(JFLAGS) $*.java --release 8
+	$(JC) $(JFLAGS) $*.java
 
 CLASSES = \
 	Iprefer.java \
