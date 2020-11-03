@@ -130,3 +130,5 @@ dmypy.json
 Socket-Assignment/SMTP/config.py
 doc/Computer Network.pdf
 Socket-Assignment/ProxyServer/cache/*
+*.class
+*.java~
