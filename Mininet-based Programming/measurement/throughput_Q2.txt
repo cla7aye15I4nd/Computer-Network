@@ -1,0 +1,7 @@
+Node: h1
+root@comnet-VirtualBox:~/Iprefer# java Iprefer -s -p 8888
+received=57082 KB rate=16.669880 Mbps
+
+Node: h4
+root@comnet-VirtualBox:~/Iprefer# java Iprefer -c -h 10.0.0.1 -p 8888 -t 20
+sent=57082KB rate=21.325853 Mbps

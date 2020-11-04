@@ -1,0 +1,2 @@
+root@comnet-VirtualBox:~/Iprefer# java Iprefer -c -h 10.0.0.5 -p 8888 -t 20
+sent=57011KB rate=22.340916 Mbps

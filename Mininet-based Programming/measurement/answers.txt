@@ -1,0 +1,21 @@
+Q2: 
+160ms 20Mbps
+The RTT should be twice of latency sum
+The bandwidth should be the minimum bandwidth in the path.
+
+Q3:
+RTT are still is 160ms, both host throughput is 10Mbps(2 pairs) and 6.5Mbps(3 pairs).
+Because I couldn't get the client to launch perfectly at the same time, I tested it for 1000 seconds, and the result was the same as I expected.
+
+a. I choose h1, h7 connect to h4.
+h1: 9.29 Mbps, 161.569 ms
+h7: 9.47 Mbps, 161.859 ms
+
+b. I choose h1, h7, h8 connect to h4.
+h1: 6.11 Mbps, 161.612 ms
+h7: 6.46 Mbps, 163.101 ms
+h8: 6.34 Mbps, 161.885 ms
+
+Q4:
+The RTT will not change h1-h4 is 160 ms, h5-h6 is 40 ms.
+L2 will be the bottleneck, so the bandwidth both are 20 Mbps,
