@@ -127,8 +127,13 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# other
 Socket-Assignment/SMTP/config.py
 doc/Computer Network.pdf
 Socket-Assignment/ProxyServer/cache/*
 *.class
 *.java~
+Lecture
+*.mp4
+*.zip
