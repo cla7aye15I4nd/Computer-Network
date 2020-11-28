@@ -73,3 +73,22 @@ Replace $U(r)$ to $f(U(r))$, $f$是单调递增的。
 多视频提供商依然是公平的，如果他们共享链路，他们各自归一化后，将会公平共享链路流量。
 
 大概意思就是虽然使用那个复杂的函数进行归一化很难，但是使用Basic的却很简单，为了让Client不获取到过多的信息，我们将使用用户索引改成了使用视频索引。（真是诡异的做法），然后强行解释了一通这样做是不错的。。。。。。。。。
+
+
+
+## Outline
+
+- Goal
+  - Fairness between client
+  - Deploy at client
+  - State relative algorithm
+  - Fairness with other TCP
+- Observation
+  - PQ function
+  - Stateless problem
+  - ....
+- Design
+  - Basic function / Client Aware function
+  - Normalization function
+- Optimization
+
