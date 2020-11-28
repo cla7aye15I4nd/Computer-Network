@@ -6,6 +6,7 @@ import edu.wisc.cs.sdn.vnet.Iface;
 
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.packet.ICMP;
 
 /**
  * @author Aaron Gember-Jacobson and Anubhavnidhi Abhashkumar
@@ -119,7 +120,10 @@ public class Router extends Device
         // Check TTL
         ipPacket.setTtl((byte)(ipPacket.getTtl()-1));
         if (0 == ipPacket.getTtl())
-        { return; }
+		{ 
+			this.sendPacket(ICMPWrapper.makePacket(inIface, etherPacket, 11, 0), inIface);
+			return; 
+		}
         
         // Reset checksum now that TTL is decremented
         ipPacket.resetChecksum();
@@ -128,7 +132,18 @@ public class Router extends Device
         for (Iface iface : this.interfaces.values())
         {
         	if (ipPacket.getDestinationAddress() == iface.getIpAddress())
-        	{ return; }
+			{ 
+				switch (ipPacket.getProtocol()) {
+					case IPv4.PROTOCOL_TCP: case IPv4.PROTOCOL_UDP:
+						this.sendPacket(ICMPWrapper.makePacket(inIface, etherPacket, 3, 3), inIface);
+						break;
+					case IPv4.PROTOCOL_ICMP:
+						ICMP icmp = (ICMP) ipPacket.getPayload();
+						if (icmp.getIcmpType() == 8)
+							this.sendPacket(ICMPWrapper.makeEchoPacket(inIface, etherPacket), inIface);							
+				}
+				return; 			
+			}
         }
 		
         // Do route lookup and forward
@@ -151,7 +166,10 @@ public class Router extends Device
 
         // If no entry matched, do nothing
         if (null == bestMatch)
-        { return; }
+        { 
+			this.sendPacket(ICMPWrapper.makePacket(inIface, etherPacket, 3, 0), inIface);
+			return; 
+		}
 
         // Make sure we don't sent a packet back out the interface it came in
         Iface outIface = bestMatch.getInterface();
@@ -169,7 +187,10 @@ public class Router extends Device
         // Set destination MAC address in Ethernet header
         ArpEntry arpEntry = this.arpCache.lookup(nextHop);
         if (null == arpEntry)
-        { return; }
+		{ 
+			this.sendPacket(ICMPWrapper.makePacket(inIface, etherPacket, 3, 1), inIface);
+			return; 
+		}
         etherPacket.setDestinationMACAddress(arpEntry.getMac().toBytes());
         
         this.sendPacket(etherPacket, outIface);
