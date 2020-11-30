@@ -8,6 +8,7 @@ import edu.wisc.cs.sdn.vnet.DumpFile;
 import edu.wisc.cs.sdn.vnet.Iface;
 
 import java.util.Map;
+import java.util.HashSet;
 import java.util.HashMap;
 
 /**
@@ -34,8 +35,8 @@ public class Switch extends Device
 	System.out.println("*** -> Received packet: " +
 			   etherPacket.toString().replace("\n", "\n\t"));
 	
-	
-	for (Map.Entry<MACAddress, Entry> entry : switching_table.entrySet()) {
+
+	for (Map.Entry<MACAddress, Entry> entry : new HashSet<>(switching_table.entrySet())) {
 	    if (System.currentTimeMillis() - entry.getValue().timestamp > TIME_LIMIT)
 		switching_table.remove(entry.getKey());
 	}

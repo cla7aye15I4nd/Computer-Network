@@ -24,9 +24,9 @@ public class Router extends Device
      */
     public Router(String host, DumpFile logfile)
     {
-	super(host,logfile);
-	this.routeTable = new RouteTable();
-	this.arpCache = new ArpCache();
+		super(host,logfile);
+		this.routeTable = new RouteTable();
+		this.arpCache = new ArpCache();
     }
     
     /**
@@ -41,16 +41,16 @@ public class Router extends Device
      */
     public void loadRouteTable(String routeTableFile)
     {
-	if (!routeTable.load(routeTableFile, this)) {
-	    System.err.println("Error setting up routing table from file "
-			       + routeTableFile);
-	    System.exit(1);
-	}
+		if (!routeTable.load(routeTableFile, this)) {
+			System.err.println("Error setting up routing table from file "
+					   + routeTableFile);
+			System.exit(1);
+		}
 	
-	System.out.println("Loaded static route table");
-	System.out.println("-------------------------------------------------");
-	System.out.print(this.routeTable.toString());
-	System.out.println("-------------------------------------------------");
+		System.out.println("Loaded static route table");
+		System.out.println("-------------------------------------------------");
+		System.out.print(this.routeTable.toString());
+		System.out.println("-------------------------------------------------");
     }
     
     /**
@@ -59,16 +59,16 @@ public class Router extends Device
      */
     public void loadArpCache(String arpCacheFile)
     {
-	if (!arpCache.load(arpCacheFile)) {
-	    System.err.println("Error setting up ARP cache from file "
-			       + arpCacheFile);
-	    System.exit(1);
-	}
+		if (!arpCache.load(arpCacheFile)) {
+			System.err.println("Error setting up ARP cache from file "
+					   + arpCacheFile);
+			System.exit(1);
+		}
 	
-	System.out.println("Loaded static ARP cache");
-	System.out.println("----------------------------------");
-	System.out.print(this.arpCache.toString());
-	System.out.println("----------------------------------");
+		System.out.println("Loaded static ARP cache");
+		System.out.println("----------------------------------");
+		System.out.print(this.arpCache.toString());
+		System.out.println("----------------------------------");
     }
     
     /**
@@ -77,34 +77,48 @@ public class Router extends Device
      * @param inIface the interface on which the packet was received
      */
     public void handlePacket(Ethernet etherPacket, Iface inIface)
-    {
-	System.out.println("*** -> Received packet: " +
-			   etherPacket.toString().replace("\n", "\n\t"));
-	
-	if (etherPacket.getEtherType() != Ethernet.TYPE_IPv4) return;
-	
-	IPv4 payload = (IPv4) etherPacket.getPayload();
-	
-	short checksum = payload.getChecksum();
-	byte TTL = payload.getTtl();
-	
-	payload.serialize();
-	if (payload.getChecksum() != checksum) return;
-	if (--TTL == 0) return;
-	
-	payload.setTtl(TTL);	
-	for (Iface iface : this.interfaces.values())
-	    if (iface.getIpAddress() == payload.getDestinationAddress())
-		return;
+	{
+		System.out.println("*** -> Received packet: " +
+                etherPacket.toString().replace("\n", "\n\t"));
+		
+		if (etherPacket.getEtherType() != Ethernet.TYPE_IPv4) return;
+		
+		IPv4 ipPacket = (IPv4)etherPacket.getPayload();
 
-	RouteEntry nexthop = this.routeTable.lookup(payload.getDestinationAddress());
-	if (nexthop == null || nexthop.getInterface().getName().equals(inIface.getName())) return;
+        short checksum = ipPacket.getChecksum();
+        ipPacket.resetChecksum();
+		ipPacket.serialize();
+        
+        if (checksum != ipPacket.getChecksum()) return;
+        
+        byte ttl = ipPacket.getTtl();
+        
+        if (ttl == 1) return;
+        ipPacket.setTtl((byte) (ttl - 1));
+        ipPacket.resetChecksum();
+        ipPacket.serialize();
+        
+        for (Iface iface: this.interfaces.values())
+        	if (ipPacket.getDestinationAddress() == iface.getIpAddress())
+        		return;
+				
+		int destAddr = ipPacket.getDestinationAddress();
 
-	etherPacket.setSourceMACAddress(nexthop.getInterface().getMacAddress().toString());
-	etherPacket.setDestinationMACAddress(this.arpCache.lookup(nexthop.getGatewayAddress()).getMac().toString());
+        RouteEntry routeEntry = this.routeTable.lookup(destAddr);
+        if (routeEntry == null) return;
 
-	payload.serialize();
-	etherPacket.setPayload(payload);
-	sendPacket(etherPacket, nexthop.getInterface());
-    }
+        Iface outIface = routeEntry.getInterface();
+        if (outIface == inIface) return;
+
+        etherPacket.setSourceMACAddress(outIface.getMacAddress().toBytes());
+
+        int nextHop = routeEntry.getGatewayAddress();
+        if (nextHop == 0) nextHop = destAddr;
+
+        ArpEntry arpEntry = this.arpCache.lookup(nextHop);
+        if (arpEntry == null) return;
+        etherPacket.setDestinationMACAddress(arpEntry.getMac().toBytes());
+        
+        this.sendPacket(etherPacket, outIface);
+	}
 }
