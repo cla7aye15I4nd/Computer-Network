@@ -80,4 +80,24 @@ public class Wrapper {
                 .setTargetProtocolAddress(arpPacket.getSenderProtocolAddress())
             );
     }
+
+    static Ethernet makeArpRequestPacket(Iface iface, int ip) {
+        return 
+            (Ethernet) new Ethernet()
+            .setEtherType(Ethernet.TYPE_ARP)
+            .setSourceMACAddress(iface.getMacAddress().toBytes())
+            .setDestinationMACAddress("FF:FF:FF:FF:FF:FF")
+            .setPayload(
+                new ARP()
+                .setHardwareType(ARP.HW_TYPE_ETHERNET)
+                .setProtocolType(ARP.PROTO_TYPE_IP)
+                .setHardwareAddressLength((byte) Ethernet.DATALAYER_ADDRESS_LENGTH)
+                .setProtocolAddressLength((byte) 4)
+                .setOpCode(ARP.OP_REQUEST)
+                .setSenderHardwareAddress(iface.getMacAddress().toBytes())
+                .setSenderProtocolAddress(iface.getIpAddress())
+                .setTargetHardwareAddress(new byte[Ethernet.DATALAYER_ADDRESS_LENGTH])
+                .setTargetProtocolAddress(ip)
+            );
+    }
 }

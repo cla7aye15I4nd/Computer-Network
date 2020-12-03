@@ -21,6 +21,9 @@ public class Router extends Device
 	
 	/** ARP cache for the router */
 	private ArpCache arpCache;
+
+	/** ARP Manager */
+	private ArpManager arpManager;
 	
 	/**
 	 * Creates a router for a specific host.
@@ -31,6 +34,7 @@ public class Router extends Device
 		super(host,logfile);
 		this.routeTable = new RouteTable();
 		this.arpCache = new ArpCache();
+		this.arpManager = new ArpManager(this, arpCache);
 	}
 	
 	/**
@@ -172,7 +176,7 @@ public class Router extends Device
         // If no entry matched, do nothing
         if (null == bestMatch)
         { 
-			this.sendPacket(ICMPWrapper.makePacket(inIface, etherPacket, 3, 0), inIface);
+			this.sendPacket(Wrapper.makeICMPPacket(inIface, etherPacket, 3, 0), inIface);
 			return; 
 		}
 
@@ -193,7 +197,8 @@ public class Router extends Device
         ArpEntry arpEntry = this.arpCache.lookup(nextHop);
         if (null == arpEntry)
 		{ 
-			this.sendPacket(ICMPWrapper.makePacket(inIface, etherPacket, 3, 1), inIface);
+			// this.sendPacket(Wrapper.makeICMPPacket(inIface, etherPacket, 3, 1), inIface);
+			arpManager.generateRequest(etherPacket, inIface, nextHop, outIface);
 			return; 
 		}
         etherPacket.setDestinationMACAddress(arpEntry.getMac().toBytes());
@@ -211,6 +216,7 @@ public class Router extends Device
 					this.sendPacket(Wrapper.makeArpReplyPacket(inIface, etherPacket), inIface);
 				break;
 			case ARP.OP_REPLY:
+				this.arpManager.handleReply(etherPacket, inIface);
 		}
 	}
 }
