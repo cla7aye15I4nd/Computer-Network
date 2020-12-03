@@ -1,5 +1,7 @@
 package edu.wisc.cs.sdn.vnet.rt;
 
+import java.nio.ByteBuffer;
+
 import edu.wisc.cs.sdn.vnet.Device;
 import edu.wisc.cs.sdn.vnet.DumpFile;
 import edu.wisc.cs.sdn.vnet.Iface;
@@ -7,6 +9,7 @@ import edu.wisc.cs.sdn.vnet.Iface;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.ICMP;
+import net.floodlightcontroller.packet.ARP;
 
 /**
  * @author Aaron Gember-Jacobson and Anubhavnidhi Abhashkumar
@@ -92,6 +95,8 @@ public class Router extends Device
 		case Ethernet.TYPE_IPv4:
 			this.handleIpPacket(etherPacket, inIface);
 			break;
+		case Ethernet.TYPE_ARP:
+			this.handleArpPacket(etherPacket, inIface);
 		// Ignore all other packet types, for now
 		}
 		
@@ -121,7 +126,7 @@ public class Router extends Device
         ipPacket.setTtl((byte)(ipPacket.getTtl()-1));
         if (0 == ipPacket.getTtl())
 		{ 
-			this.sendPacket(ICMPWrapper.makePacket(inIface, etherPacket, 11, 0), inIface);
+			this.sendPacket(Wrapper.makeICMPPacket(inIface, etherPacket, 11, 0), inIface);
 			return; 
 		}
         
@@ -135,12 +140,12 @@ public class Router extends Device
 			{ 
 				switch (ipPacket.getProtocol()) {
 					case IPv4.PROTOCOL_TCP: case IPv4.PROTOCOL_UDP:
-						this.sendPacket(ICMPWrapper.makePacket(inIface, etherPacket, 3, 3), inIface);
+						this.sendPacket(Wrapper.makeICMPPacket(inIface, etherPacket, 3, 3), inIface);
 						break;
 					case IPv4.PROTOCOL_ICMP:
 						ICMP icmp = (ICMP) ipPacket.getPayload();
 						if (icmp.getIcmpType() == 8)
-							this.sendPacket(ICMPWrapper.makeEchoPacket(inIface, etherPacket), inIface);							
+							this.sendPacket(Wrapper.makeICMPEchoPacket(inIface, etherPacket), inIface);							
 				}
 				return; 			
 			}
@@ -195,4 +200,17 @@ public class Router extends Device
         
         this.sendPacket(etherPacket, outIface);
     }
+
+	private void handleArpPacket(Ethernet etherPacket, Iface inIface) 
+	{
+		ARP arpPacket = (ARP) etherPacket.getPayload();
+		int targetIp = ByteBuffer.wrap(arpPacket.getTargetProtocolAddress()).getInt();
+		switch (arpPacket.getOpCode()) {
+			case ARP.OP_REQUEST:
+				if (targetIp == inIface.getIpAddress())
+					this.sendPacket(Wrapper.makeArpReplyPacket(inIface, etherPacket), inIface);
+				break;
+			case ARP.OP_REPLY:
+		}
+	}
 }
