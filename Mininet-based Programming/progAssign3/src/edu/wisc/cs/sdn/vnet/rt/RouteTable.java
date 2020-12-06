@@ -167,6 +167,17 @@ public class RouteTable
             this.entries.add(entry);
         }
 	}
+
+	public void ripInsert(int dstIp, int gwIp, int maskIp, Iface iface, int metric, long timestamp)
+	{
+		RouteEntry entry = new RouteEntry(dstIp, gwIp, maskIp, iface);
+		entry.metric = metric;
+		entry.timestamp = timestamp;
+        synchronized(this.entries)
+        { 
+            this.entries.add(entry);
+        }
+	}
 	
 	/**
 	 * Remove an entry from the route table.
@@ -240,5 +251,13 @@ public class RouteTable
             { result += entry.toString()+"\n"; }
 		    return result;
         }
+	}
+
+	List<RouteEntry> getEntries() 
+	{
+		for (RouteEntry entry : new LinkedList<RouteEntry>(entries))
+			if (System.currentTimeMillis() + RipManager.TIME_LIMIT > entry.timestamp)
+				entries.remove(entry);
+		return entries;
 	}
 }

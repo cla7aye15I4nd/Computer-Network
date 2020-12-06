@@ -2,10 +2,13 @@ package edu.wisc.cs.sdn.vnet.rt;
 
 import edu.wisc.cs.sdn.vnet.Iface;
 
+import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.packet.ARP;
 import net.floodlightcontroller.packet.Data;
 import net.floodlightcontroller.packet.ICMP;
 import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.packet.RIPv2;
+import net.floodlightcontroller.packet.RIPv2Entry;
 import net.floodlightcontroller.packet.Ethernet;
 
 public class Wrapper {
@@ -98,6 +101,61 @@ public class Wrapper {
                 .setSenderProtocolAddress(iface.getIpAddress())
                 .setTargetHardwareAddress(new byte[Ethernet.DATALAYER_ADDRESS_LENGTH])
                 .setTargetProtocolAddress(ip)
+            );
+    }
+
+    static Ethernet makeRipRequestPacket(Iface iface) {
+        RIPv2 ripPacket = new RIPv2();
+        ripPacket.setCommand(RIPv2.COMMAND_REQUEST);
+        return 
+            (Ethernet) new Ethernet()
+            .setEtherType(Ethernet.TYPE_IPv4)
+            .setSourceMACAddress(iface.getMacAddress().toBytes())
+            .setDestinationMACAddress("FF:FF:FF:FF:FF:FF")
+            .setPayload(
+                (IPv4) new IPv4()
+                .setTtl((byte) 15)
+                .setProtocol(IPv4.PROTOCOL_UDP)
+                .setDestinationAddress(IPv4.toIPv4Address("224.0.0.9"))
+                .setSourceAddress(iface.getIpAddress())
+                .setPayload(
+                    (UDP) new UDP()
+                    .setSourcePort(UDP.RIP_PORT)
+                    .setDestinationPort(UDP.RIP_PORT)
+                    .setPayload(ripPacket)
+                )
+            );
+    }
+
+    static RIPv2 makeRipReponsePacketHook(RouteTable table) {
+        RIPv2 ripPacket = new RIPv2();
+        for (RouteEntry entry: table.getEntries()) 
+            ripPacket.addEntry(
+                new RIPv2Entry(
+                    entry.getDestinationAddress(),
+                    entry.getMaskAddress(),
+                    entry.getMetric()));
+        return ripPacket;
+    }
+
+    static Ethernet makeRipReponsePacket(Iface iface, RIPv2 ripPacket, String mac, int ip) {
+        return 
+            (Ethernet) new Ethernet()
+            .setEtherType(Ethernet.TYPE_IPv4)
+            .setSourceMACAddress(iface.getMacAddress().toBytes())
+            .setDestinationMACAddress(mac)
+            .setPayload(
+                (IPv4) new IPv4()
+                .setTtl((byte) 15)
+                .setProtocol(IPv4.PROTOCOL_UDP)
+                .setDestinationAddress(ip)
+                .setSourceAddress(iface.getIpAddress())
+                .setPayload(
+                    (UDP) new UDP()
+                    .setSourcePort(UDP.RIP_PORT)
+                    .setDestinationPort(UDP.RIP_PORT)
+                    .setPayload(ripPacket)
+                )
             );
     }
 }

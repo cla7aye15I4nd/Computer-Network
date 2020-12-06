@@ -9,6 +9,7 @@ import edu.wisc.cs.sdn.vnet.Iface;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.ICMP;
+import net.floodlightcontroller.packet.UDP;
 import net.floodlightcontroller.packet.ARP;
 
 /**
@@ -25,6 +26,9 @@ public class Router extends Device
 	/** ARP Manager */
 	private ArpManager arpManager;
 	
+	/** RIP Manager */
+	private RipManager ripManager;
+	
 	/**
 	 * Creates a router for a specific host.
 	 * @param host hostname for the router
@@ -35,6 +39,7 @@ public class Router extends Device
 		this.routeTable = new RouteTable();
 		this.arpCache = new ArpCache();
 		this.arpManager = new ArpManager(this, arpCache);
+		this.ripManager = null;
 	}
 	
 	/**
@@ -79,6 +84,11 @@ public class Router extends Device
 		System.out.println("----------------------------------");
 		System.out.print(this.arpCache.toString());
 		System.out.println("----------------------------------");
+	}
+
+	public void enableRip() 
+	{ 
+		this.ripManager = new RipManager(this); 
 	}
 
 	/**
@@ -135,15 +145,32 @@ public class Router extends Device
 		}
         
         // Reset checksum now that TTL is decremented
-        ipPacket.resetChecksum();
-        
+		ipPacket.resetChecksum();
+		
+		// check if an arriving IP packet has a destination 224.0.0.9, 
+		// a protocol type of UDP, 
+		// and a UDP destination port of 520.
+		Boolean ripFlag = ripManager != null && 			
+			ipPacket.getProtocol() == IPv4.PROTOCOL_UDP &&
+			((UDP)ipPacket.getPayload()).getDestinationPort() == UDP.RIP_PORT;
+		
+		if (ripFlag && ipPacket.getDestinationAddress() == IPv4.toIPv4Address("224.0.0.9")) {
+			ripManager.handlePacket(etherPacket, inIface);
+			return;
+		}
+
         // Check if packet is destined for one of router's interfaces
         for (Iface iface : this.interfaces.values())
         {
         	if (ipPacket.getDestinationAddress() == iface.getIpAddress())
 			{ 
 				switch (ipPacket.getProtocol()) {
-					case IPv4.PROTOCOL_TCP: case IPv4.PROTOCOL_UDP:
+					case IPv4.PROTOCOL_UDP:
+						if (ripFlag) {
+							ripManager.handlePacket(etherPacket, inIface);
+							return;
+						}
+					case IPv4.PROTOCOL_TCP: 
 						this.sendPacket(Wrapper.makeICMPPacket(inIface, etherPacket, 3, 3), inIface);
 						break;
 					case IPv4.PROTOCOL_ICMP:
@@ -218,5 +245,5 @@ public class Router extends Device
 			case ARP.OP_REPLY:
 				this.arpManager.handleReply(etherPacket, inIface);
 		}
-	}
+	}	
 }
