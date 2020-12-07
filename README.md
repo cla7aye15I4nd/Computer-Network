@@ -1,23 +1,34 @@
 # Computer-Network
 
-## Communications
+本课程包含以下元素
 
-### Challenges
+## Socket Assignment
 
-信号衰减 $\sim \frac {p_0} {d^3}$
+#### Web Server
 
-- Attenuation
-- Multipath
-- Doppler Effect
+#### SMTP
 
-| 时域 | 频域 |
-| ---- | ---- |
-| 离散 | 周期 |
-| 连续 | 离散 |
-| 周期 | 离散 |
+#### UDP Pinger
+
+#### Proxy Server
+
+## Presentation
 
 
 
+### Written Homework
+
+
+
+## Mininet-based Programming
+
+#### Mininet Tutorial & Measuring Performance
+
+#### Link & Network Layer Forwarding
+
+#### ARP, ICMP, and RIP
+
+#### Software Defined Networking
 
 
 
