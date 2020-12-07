@@ -88,6 +88,7 @@ public class Router extends Device
 
 	public void enableRip() 
 	{ 
+		System.out.println("RIP enabled");
 		this.ripManager = new RipManager(this); 
 	}
 
@@ -155,6 +156,7 @@ public class Router extends Device
 			((UDP)ipPacket.getPayload()).getDestinationPort() == UDP.RIP_PORT;
 		
 		if (ripFlag && ipPacket.getDestinationAddress() == IPv4.toIPv4Address("224.0.0.9")) {
+			System.out.println("Recv RIP packet (1)");
 			ripManager.handlePacket(etherPacket, inIface);
 			return;
 		}
@@ -167,6 +169,7 @@ public class Router extends Device
 				switch (ipPacket.getProtocol()) {
 					case IPv4.PROTOCOL_UDP:
 						if (ripFlag) {
+							System.out.println("Recv RIP packet (2)");
 							ripManager.handlePacket(etherPacket, inIface);
 							return;
 						}

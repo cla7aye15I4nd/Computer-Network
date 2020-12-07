@@ -256,7 +256,7 @@ public class RouteTable
 	List<RouteEntry> getEntries() 
 	{
 		for (RouteEntry entry : new LinkedList<RouteEntry>(entries))
-			if (System.currentTimeMillis() + RipManager.TIME_LIMIT > entry.timestamp)
+			if (System.currentTimeMillis() - RipManager.TIME_LIMIT > entry.timestamp)
 				entries.remove(entry);
 		return entries;
 	}

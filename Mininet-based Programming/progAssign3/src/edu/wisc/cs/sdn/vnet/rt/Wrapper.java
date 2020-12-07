@@ -129,12 +129,14 @@ public class Wrapper {
 
     static RIPv2 makeRipReponsePacketHook(RouteTable table) {
         RIPv2 ripPacket = new RIPv2();
+	    ripPacket.setCommand(RIPv2.COMMAND_RESPONSE);
         for (RouteEntry entry: table.getEntries()) 
             ripPacket.addEntry(
                 new RIPv2Entry(
                     entry.getDestinationAddress(),
                     entry.getMaskAddress(),
                     entry.getMetric()));
+	    System.out.println(ripPacket.getEntries());
         return ripPacket;
     }
 

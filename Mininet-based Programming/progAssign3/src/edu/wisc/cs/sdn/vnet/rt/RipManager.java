@@ -5,6 +5,7 @@ import edu.wisc.cs.sdn.vnet.Iface;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.packet.IPv4;
 import net.floodlightcontroller.packet.RIPv2;
+import net.floodlightcontroller.packet.MACAddress;
 import net.floodlightcontroller.packet.RIPv2Entry;
 
 public class RipManager {
@@ -24,8 +25,10 @@ public class RipManager {
 
 
         // Send a RIP request out all of the router’s interfaces when RIP is initialized
-        for (Iface iface: router.getInterfaces().values()) 
+        for (Iface iface: router.getInterfaces().values()) {
+	        System.out.println("Send RIP Request");
             router.sendPacket(Wrapper.makeRipRequestPacket(iface), iface);
+	}
 
         // Send an unsolicited RIP response out all of the router’s interfaces 
         // every 10 seconds thereafter
@@ -42,6 +45,7 @@ public class RipManager {
     }
 
     void boardcastRouteTable(RouteTable table) {
+        System.out.println("Boardcast route table");
         RIPv2 ripPacket = Wrapper.makeRipReponsePacketHook(table);
         for (Iface iface: router.getInterfaces().values()) 
             router.sendPacket(Wrapper.makeRipReponsePacket(iface, ripPacket, 
@@ -64,20 +68,25 @@ public class RipManager {
         // When sending a RIP response for a specific RIP request, 
         // the destination IP address and destination Ethernet address should be 
         // the IP address and MAC address of the router interface that sent the request
+        System.out.println("Handle Rip Request Packet");
         RouteTable table = router.getRouteTable();
         RIPv2 ripPacket = Wrapper.makeRipReponsePacketHook(table);
         router.sendPacket(Wrapper.makeRipReponsePacket(iface, ripPacket, 
-                            etherPacket.getSourceMACAddress().toString(), 
+                            new MACAddress(etherPacket.getSourceMACAddress()).toString(), 
                             ((IPv4)etherPacket.getPayload()).getSourceAddress()), iface);
     }
 
     void handleResponsePacket(Ethernet etherPacket, Iface iface) {
+        System.out.println("Handle Rip Response Packet");
         boolean flag = false;
         RouteTable table = router.getRouteTable();
 
         IPv4 ipPacket = (IPv4) etherPacket.getPayload();
-        RIPv2 ripPacket = (RIPv2) etherPacket.getPayload().getPayload().getPayload().getPayload();
-        for (RIPv2Entry entry: ripPacket.getEntries()) {            
+        RIPv2 ripPacket = (RIPv2) etherPacket.getPayload().getPayload().getPayload();
+        
+        if (ripPacket == null)
+            return;
+        for (RIPv2Entry entry: ripPacket.getEntries()) {
             int ip = entry.getAddress();
             int mask = entry.getSubnetMask();
             int gateway = ipPacket.getSourceAddress();
