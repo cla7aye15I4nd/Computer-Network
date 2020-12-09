@@ -26,7 +26,7 @@ public class RipManager {
 
         // Send a RIP request out all of the router’s interfaces when RIP is initialized
         for (Iface iface: router.getInterfaces().values()) {
-	        System.out.println("Send RIP Request");
+            System.out.println("Send RIP Request");
             router.sendPacket(Wrapper.makeRipRequestPacket(iface), iface);
 	}
 

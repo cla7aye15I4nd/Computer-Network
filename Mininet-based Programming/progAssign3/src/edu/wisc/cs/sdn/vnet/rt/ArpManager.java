@@ -38,7 +38,7 @@ public class ArpManager {
                 public void run() {
                     try {
                         for (int i = 0; i < 3; ++i) {
-                            Wrapper.makeArpRequestPacket(outIface, ip);
+                            router.sendPacket(Wrapper.makeArpRequestPacket(outIface, ip), outIface);                           
                             Thread.sleep(1000);
                         }
                     } catch (InterruptedException e) { return; }
@@ -77,6 +77,7 @@ public class ArpManager {
     }
 
     void handleReply(Ethernet etherPacket, Iface inIface) {
+        System.out.println("Recv Arp Reply");
         ARP arpPacket = (ARP) etherPacket.getPayload();
         int ip = IPv4.toIPv4Address(arpPacket.getSenderProtocolAddress());
         MACAddress mac = new MACAddress(arpPacket.getSenderHardwareAddress());
@@ -92,6 +93,7 @@ public class ArpManager {
     }
 
     void generateRequest(Ethernet etherPacket, Iface inIface, int ip, Iface outIface) {
+        System.out.println("Generate Request");
         synchronized (table) {
             Monitor monitor = table.get(ip);
             if (monitor == null) {
