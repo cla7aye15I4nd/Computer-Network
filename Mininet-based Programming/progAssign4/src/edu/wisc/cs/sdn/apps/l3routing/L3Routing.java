@@ -3,6 +3,7 @@ package edu.wisc.cs.sdn.apps.l3routing;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -10,6 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import edu.wisc.cs.sdn.apps.l3routing.GraphUtil.Edge;
 import edu.wisc.cs.sdn.apps.util.Host;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -123,7 +125,8 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 			
 			/*****************************************************************/
 			/* TODO: Update routing: add rules to route to new host          */
-			
+			loadHostRule(host);
+			loadTable();
 			/*****************************************************************/
 		}
 	}
@@ -145,7 +148,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		
 		/*********************************************************************/
 		/* TODO: Update routing: remove rules to route to host               */
-		
+		loadTable();
 		/*********************************************************************/
 	}
 
@@ -173,7 +176,8 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		
 		/*********************************************************************/
 		/* TODO: Update routing: change rules to route to host               */
-		
+		loadHostRule(host);
+		loadTable();
 		/*********************************************************************/
 	}
 	
@@ -189,7 +193,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		
 		/*********************************************************************/
 		/* TODO: Update routing: change routing rules for all hosts          */
-		
+		loadTable();
 		/*********************************************************************/
 	}
 
@@ -205,7 +209,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		
 		/*********************************************************************/
 		/* TODO: Update routing: change routing rules for all hosts          */
-		
+		loadTable();
 		/*********************************************************************/
 	}
 
@@ -236,8 +240,46 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		
 		/*********************************************************************/
 		/* TODO: Update routing: change routing rules for all hosts          */
-		
+		loadTable();
 		/*********************************************************************/
+	}
+
+	public void loadTable() {
+		HashMap<Long, HashMap<Long, Edge>> ht;
+
+		ht = GraphUtil.makeTable(getSwitches().keySet(), getLinks());
+		for (Map.Entry<Long, HashMap<Long, GraphUtil.Edge>> entry: ht.entrySet()) {
+			long id = entry.getKey();
+			IOFSwitch sw = this.floodlightProv.getSwitch(id);
+            HashMap<Long, GraphUtil.Edge> dist = entry.getValue();            
+
+            for (Host host: getHosts()) {
+                GraphUtil.Edge edge = dest.get(host.getSwitch().getId());				
+				if (edge == null) continue;
+
+                int port = edge.link.getSrc() == id? edge.link.getSrcPort(): edge.link.getDstPort();
+                loadSwitchRule(sw, port, host.getIPv4Address());
+            }
+		}
+	}
+
+	public void loadSwitchRule(IOFSwitch sw, int port, int ip) {
+		OFMatch ofmatch = new OFMatch().setDataLayerType(OFMatch.ETH_TYPE_IPV4).setNetworkDestination(ipAddress);
+		SwitchCommands.removeRules(currentSwitch, table, ofmatch);
+
+		List<OFInstruction> commands = Collections.singletonList(
+				(OFInstruction) new OFInstructionApplyActions()
+					.setActions(Collections.singletonList(
+						(OFAction) new OFActionOutput()
+							.setPort(port)
+					)
+				)
+		);
+		SwitchCommands.installRule(sw, table, SwitchCommands.DEFAULT_PRIORITY, ofmatch, commands);
+	}
+
+	public loadHostRule(Host host) {
+		loadSwitchRule(host.getSwitch(), host.getPort(), host.getIPv4Address());
 	}
 
 	/**
