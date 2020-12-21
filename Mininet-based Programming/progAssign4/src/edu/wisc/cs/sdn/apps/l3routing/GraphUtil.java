@@ -56,8 +56,11 @@ public class GraphUtil {
                 
                 for (Map.Entry<Long, Edge> entry: graph.get(u).entrySet()) {
                     Long v = entry.getKey();
-                    if (!set.contains(v)) {
-                        dist.put(v, new Edge(dist.get(u).dist + 1, entry.getValue().link));
+                    if (!set.contains(v)) {                        
+                        if (dist.get(u).dist == 0) 
+                            dist.put(v, new Edge(dist.get(u).dist + 1, entry.getValue().link));
+                        else
+                            dist.put(v, new Edge(dist.get(u).dist + 1, dist.get(u).link));
                         set.add(v);
                         q.offer(v);
                     }
