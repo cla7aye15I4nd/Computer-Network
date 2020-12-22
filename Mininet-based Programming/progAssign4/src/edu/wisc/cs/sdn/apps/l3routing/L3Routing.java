@@ -264,8 +264,8 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 	}
 
 	public void loadSwitchRule(IOFSwitch sw, int port, int ip) {
-		OFMatch ofmatch = new OFMatch().setDataLayerType(OFMatch.ETH_TYPE_IPV4).setNetworkDestination(ipAddress);
-		SwitchCommands.removeRules(currentSwitch, table, ofmatch);
+		OFMatch ofmatch = new OFMatch().setDataLayerType(OFMatch.ETH_TYPE_IPV4).setNetworkDestination(ip);
+		SwitchCommands.removeRules(sw, table, ofmatch);
 
 		List<OFInstruction> commands = Collections.singletonList(
 				(OFInstruction) new OFInstructionApplyActions()

@@ -9,11 +9,13 @@ import java.util.Map;
 import org.openflow.protocol.OFMessage;
 import org.openflow.protocol.OFPacketIn;
 import org.openflow.protocol.OFType;
+import org.openflow.protocol.OFPort;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import edu.wisc.cs.sdn.apps.util.ArpServer;
+import edu.wisc.cs.sdn.apps.l3routing.L3Routing;
 
 import net.floodlightcontroller.core.FloodlightContext;
 import net.floodlightcontroller.core.IFloodlightProviderService;
@@ -31,6 +33,12 @@ import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.devicemanager.internal.DeviceManagerImpl;
 import net.floodlightcontroller.packet.Ethernet;
 import net.floodlightcontroller.util.MACAddress;
+import net.floodlightcontroller.packet.ARP;
+import net.floodlightcontroller.packet.TCP;
+import net.floodlightcontroller.packet.IPv4;
+import net.floodlightcontroller.packet.Ethernet;
+
+import org.openflow.protocol.OFMatch;
 
 public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 		IOFMessageListener
@@ -130,6 +138,31 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 		/*       (2) ARP packets to the controller, and                      */
 		/*       (3) all other packets to the next rule table in the switch  */
 		
+		for (int vip: instances.keySet()) {
+			OFMatch arpPacket = new OFMatch()
+				.setDataLayerType(OFMatch.ETH_TYPE_ARP)
+				.setNetworkDestination(vip);
+			OFMatch rulePacket = new OFMatch()
+				.setDataLayerType(OFMatch.ETH_TYPE_IPV4)			
+				.setNetworkProtocol(OFMatch.IP_PROTO_TCP)
+				.setNetworkDestination(vip);
+
+			List<OFInstruction> commands = Collections.singletonList(
+				(OFInstruction) new OFInstructionApplyActions()
+				.setActions(Collections.singletonList(
+					(OFAction) new OFActionOutput().setPort(OFPort.OFPP_CONTROLLER.getValue())
+			)));
+						
+			SwitchCommands.removeRules(sw, table, arpPacket);
+			SwitchCommands.installRule(sw, table, (byte)2, arpPacket, commands);
+
+			SwitchCommands.removeRules(sw, table, rulePacket);
+			SwitchCommands.installRule(sw, table, (byte)2, rulePacket, commands);			
+		}
+
+		SwitchCommands.installRule(sw, table, SwitchCommands.DEFAULT_PRIORITY, new OFMatch(), 
+			Collections.singletonList((OFInstruction) new OFInstructionGotoTable(L3Routing.table))
+		);
 		/*********************************************************************/
 	}
 	
@@ -160,6 +193,11 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 		/*       connection-specific rules to rewrite IP and MAC addresses;  */
 		/*       ignore all other packets                                    */
 		
+		if (ethPkt.getEtherType() == OFMatch.ETH_TYPE_ARP) {
+			handleArpPacket(sw, ethPkt, (short) pktIn.getInPort());
+		} else if (ethPkt.getEtherType() == OFMatch.ETH_TYPE_IPV4) {
+			handleIpv4Packet(sw, ethPkt);					
+		}
 		/*********************************************************************/
 
 		
@@ -167,6 +205,80 @@ public class LoadBalancer implements IFloodlightModule, IOFSwitchListener,
 		return Command.CONTINUE;
 	}
 	
+	private void handleArpPacket(IOFSwitch sw, Ethernet ethPkt, short port) {
+		ARP arpPkt = (ARP) ethPkt.getPayload();		
+		
+		int ip = IPv4.toIPv4Address(arpPkt.getTargetProtocolAddress());
+		byte[] mac = instance.getVirtualMAC();
+		LoadBalancerInstance instance = instances.get(ip);
+
+		if (arpPkt.getOpCode() != ARP.OP_REQUEST || instance == null) return;		
+
+		SwitchCommands.sendPacket(sw, port, 
+			(Ethernet) new Ethernet()
+				.setEtherType(Ethernet.TYPE_ARP)
+				.setSourceMACAddress(mac)
+				.setDestinationMACAddress(ethPkt.getSourceMACAddress())
+				.setPayload(
+					new ARP()
+						.setOpCode(ARP.OP_REPLY)
+						.setHardwareType(ARP.HW_TYPE_ETHERNET)
+						.setProtocolType(ARP.PROTO_TYPE_IP)
+						.setSenderHardwareAddress(mac)
+						.setSenderProtocolAddress(ip)
+						.setHardwareAddressLength((byte) Ethernet.DATALAYER_ADDRESS_LENGTH)
+						.setProtocolAddressLength((byte) MACAddress.MAC_ADDRESS_LENGTH)	
+						.setTargetHardwareAddress(arpPkt.getSenderHardwareAddress())
+						.setTargetProtocolAddress(arpPkt.getTargetProtocolAddress())
+				)
+		);
+	}
+
+	private void handleIpv4Packet(IOFSwitch sw, Ethernet ethPkt) {
+		IPv4 ipPkt = (IPv4) ethPkt.getPayload();		
+		TCP tcpPkt = (TCP) ipPkt.getPayload();
+		LoadBalancerInstance instance = instances.get(ipPkt.getDestinationAddress());
+
+		if (ipPkt.getProtocol() != IPv4.PROTOCOL_TCP || 
+			tcpPkt.getFlags() != TCP_FLAG_SYN || instance == null) return;		
+
+		byte protocol = ipPkt.getProtocol();			
+		int dstIp = ipPkt.getDestinationAddress();
+		int nextIp = instance.getNextHostIP();			
+
+		SwitchCommands.installRule(sw, table, SwitchCommands.MAX_PRIORITY, 
+			makeMatchCriteria(protocol, ipPkt.getSourceAddress(), ipPkt.getDestinationAddress(), tcpPkt.getSourcePort(), tcpPkt.getDestinationPort()),
+			makeRewriteInstructions(OFOXMFieldType.ETH_DST, getHostMACAddress(dstIp), OFOXMFieldType.IPV4_DST, dstIp),
+			(short) 0, (short) 20);
+
+		SwitchCommands.installRule(sw, table, SwitchCommands.MAX_PRIORITY, 
+			makeMatchCriteria(protocol, instance.getNextHostIP(), ipPkt.getSourceAddress(), tcpPkt.getDestinationPort(), tcpPkt.getSourcePort()),
+			makeRewriteInstructions(OFOXMFieldType.ETH_SRC, getHostMACAddress(nextIp), OFOXMFieldType.IPV4_SRC, nextIp),			
+			(short) 0, (short) 20);
+	}
+
+	private OFMatch makeMatchCriteria(byte protocol, int srcIp, int dstIp, short srcPort, short dstPort) {
+		return new OFMatch()
+				.setDataLayerType(OFMatch.ETH_TYPE_IPV4)
+				.setNetworkProtocol(protocol)
+				.setNetworkSource(srcIp)
+				.setNetworkDestination(dstIp)
+				.setTransportSource(srcPort)
+				.setTransportDestination(dstPort);
+	}
+
+	private List<OFInstruction> makeRewriteInstructions(OFOXMFieldType macType, byte[] mac, OFOXMFieldType ipType, int ip) {
+        return Arrays.asList(
+			new OFInstructionApplyActions().setActions(
+				Arrays.asList(
+					(OFAction) new OFActionSetField().setField(new OFOXMField(macType, mac)),
+					(OFAction) new OFActionSetField().setField(new OFOXMField(ipType, ip))
+				)
+			),
+			new OFInstructionGotoTable(L3Routing.table)
+        );
+    }
+
 	/**
 	 * Returns the MAC address for a host, given the host's IP address.
 	 * @param hostIPAddress the host's IP address
