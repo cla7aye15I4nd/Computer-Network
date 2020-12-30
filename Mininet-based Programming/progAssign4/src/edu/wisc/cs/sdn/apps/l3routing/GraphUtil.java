@@ -24,17 +24,17 @@ public class GraphUtil {
         HashMap<Long, HashMap<Long, Edge>> graph;
         HashMap<Long, HashMap<Long, Edge>> table;
 
-        graph = new HashMap<>();
-        table = new HashMap<>();
+        graph = new HashMap<Long, HashMap<Long, Edge>>();
+        table = new HashMap<Long, HashMap<Long, Edge>>();
         for (Long from: nodes) {
-            HashMap<Long, Edge> map = new HashMap<>();
+            HashMap<Long, Edge> map = new HashMap<Long, Edge>();
             for (Long to: nodes) {
                 if (from == to)
                     map.put(to, new Edge(0L, null));
                 else
                     map.put(to, new Edge(Long.MAX_VALUE, null));
             }            
-            graph.put(from, new HashMap<>());
+            graph.put(from, new HashMap<Long, Edge>());
             table.put(from, map);
         }
 
@@ -45,9 +45,9 @@ public class GraphUtil {
         }
 
         for (Long node: nodes) {            
-            HashSet<Long> set = new HashSet<>();
+            HashSet<Long> set = new HashSet<Long>();
             HashMap<Long, Edge> dist = table.get(node);
-            Queue<Long> q = new LinkedList<>();
+            Queue<Long> q = new LinkedList<Long>();
 
             q.offer(node);
             set.add(node);

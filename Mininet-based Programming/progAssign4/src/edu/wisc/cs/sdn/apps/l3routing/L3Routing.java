@@ -11,8 +11,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.openflow.protocol.OFMatch;
+import org.openflow.protocol.action.OFAction;
+import org.openflow.protocol.action.OFActionOutput;
+import org.openflow.protocol.instruction.OFInstruction;
+import org.openflow.protocol.instruction.OFInstructionApplyActions;
+
 import edu.wisc.cs.sdn.apps.l3routing.GraphUtil.Edge;
 import edu.wisc.cs.sdn.apps.util.Host;
+import edu.wisc.cs.sdn.apps.util.SwitchCommands;
 
 import net.floodlightcontroller.core.IFloodlightProviderService;
 import net.floodlightcontroller.core.IOFSwitch;
@@ -29,6 +36,8 @@ import net.floodlightcontroller.devicemanager.IDeviceService;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 import net.floodlightcontroller.routing.Link;
+
+import java.util.Collections;
 
 public class L3Routing implements IFloodlightModule, IOFSwitchListener, 
 		ILinkDiscoveryListener, IDeviceListener
@@ -254,8 +263,11 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
             HashMap<Long, GraphUtil.Edge> dist = entry.getValue();            
 
             for (Host host: getHosts()) {
-                GraphUtil.Edge edge = dest.get(host.getSwitch().getId());				
-				if (edge == null) continue;
+                GraphUtil.Edge edge;
+				if (!host.isAttachedToSwitch()) continue;
+				
+				edge = dist.get(host.getSwitch().getId());				
+				if (edge == null || edge.link == null) continue;
 
                 int port = edge.link.getSrc() == id? edge.link.getSrcPort(): edge.link.getDstPort();
                 loadSwitchRule(sw, port, host.getIPv4Address());
@@ -278,8 +290,9 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		SwitchCommands.installRule(sw, table, SwitchCommands.DEFAULT_PRIORITY, ofmatch, commands);
 	}
 
-	public loadHostRule(Host host) {
-		loadSwitchRule(host.getSwitch(), host.getPort(), host.getIPv4Address());
+	public void loadHostRule(Host host) {
+		if (host.isAttachedToSwitch())
+			loadSwitchRule(host.getSwitch(), host.getPort(), host.getIPv4Address());
 	}
 
 	/**
